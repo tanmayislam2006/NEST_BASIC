@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { CreateUSerDto } from './dto/create-user.dto';
 export interface User {
   id: string;
   [key: string]: any;
@@ -13,7 +14,7 @@ export class UsersService {
       data: this.users,
     };
   }
-  createUser(userInfo: Record<string, any>) {
+  createUser(userInfo: CreateUSerDto) {
     const newUser = {
       id: Date.now().toString(),
       ...userInfo,

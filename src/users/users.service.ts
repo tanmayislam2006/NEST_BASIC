@@ -1,55 +1,73 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { CreateUSerDto } from './dto/create-user.dto';
-export interface User {
-  id: string;
-  [key: string]: any;
-}
+import { UpdateUserDto } from './dto/update-user.dto';
+import { User } from './entities/user.entity';
+
 @Injectable()
 export class UsersService {
-  private users: User[] = [];
-  getAllUsers() {
+  constructor(
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
+  ) {}
+
+  async getAllUsers() {
+    const users = await this.usersRepository.find();
     return {
       success: true,
       message: 'the url hit the url /users',
-      data: this.users,
+      data: users,
     };
   }
-  createUser(userInfo: CreateUSerDto) {
-    const newUser = {
-      id: Date.now().toString(),
-      ...userInfo,
-    };
-    this.users.push(newUser);
+
+  async createUser(userInfo: CreateUSerDto) {
+    const newUser = this.usersRepository.create(userInfo);
+    const savedUser = await this.usersRepository.save(newUser);
     return {
       success: true,
       message: 'user created successfully',
-      data: newUser,
+      data: savedUser,
     };
   }
-  getUserById(id: string) {
-    const result = this.users.find((u) => u.id === id);
 
+  async getUserById(id: string) {
+    const result = await this.usersRepository.findOneBy({ id });
+    if (!result) {
+      throw new NotFoundException('User Not Found');
+    }
     return {
       success: true,
       message: 'User Info Get Successfully',
       data: result,
     };
   }
-  updateUser(id: string, updateData: Record<string, any>) {
-    const user = this.users.find((u) => u.id === id);
-    if (!user) throw new Error('User Not Found');
-    Object.assign(user, updateData);
+
+  async updateUser(id: string, updateData: UpdateUserDto) {
+    const user = await this.usersRepository.findOneBy({ id });
+    if (!user) {
+      throw new NotFoundException('User Not Found');
+    }
+
+    // Merge updates
+    this.usersRepository.merge(user, updateData);
+    const updatedUser = await this.usersRepository.save(user);
+
     return {
       success: true,
-      massage: 'user updated ',
-      data: user,
+      message: 'user updated ',
+      data: updatedUser,
     };
   }
-  deleteUser(id: string) {
-    this.users = this.users.filter((u) => u.id !== id);
+
+  async deleteUser(id: string) {
+    const result = await this.usersRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException('User Not Found');
+    }
     return {
       success: true,
-      massage: 'user delete success fully',
+      message: 'user delete success fully',
     };
   }
 }
